@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Masteri Kuiz & Nota Warisan Adat Sabah</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; }
+        .main-wrapper { display: flex; height: 100vh; }
+        
+        /* Bahagian Kiri - Nota Padat */
+        .sidebar-notes { width: 45%; background: #ffffff; border-right: 2px solid #cbd5e1; overflow-y: auto; padding: 25px; height: 100%; }
+        
+        /* Bahagian Kanan - Kuiz */
+        .content-quiz { width: 55%; overflow-y: auto; padding: 25px; height: 100%; background: #f8fafc; }
+        
+        .badge-topic { background-color: #0284c7; color: white; font-size: 0.9rem; padding: 6px 12px; border-radius: 20px; }
+        .note-card { background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .quiz-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        .option-label { display: block; padding: 10px 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; margin-top: 6px; transition: background 0.2s; }
+        .option-label:hover { background: #f1f5f9; }
+        
+        .correct-bg { background-color: #d1e7dd !important; border-color: #a3cfbb !important; color: #0f5132; }
+        .wrong-bg { background-color: #f8d7da !important; border-color: #f5c2c7 !important; color: #842029; }
+        .hint-text { font-size: 0.85rem; color: #64748b; margin-top: 5px; font-style: italic; display: none; }
+        
+        .sticky-header { position: sticky; top: -25px; background: #ffffff; padding: 15px 0; border-bottom: 1px solid #e2e8f0; z-index: 10; margin-top: -25px; }
+        .sticky-quiz-header { position: sticky; top: -25px; background: #f8fafc; padding: 15px 0; border-bottom: 1px solid #e2e8f0; z-index: 10; margin-top: -25px; }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    
+    <div class="sidebar-notes" id="notes-panel">
+        <div class="sticky-header d-flex justify-content-between align-items-center">
+            <h4 class="text-dark fw-bold m-0">📚 Rujukan Nota Padat</h4>
+            <span class="badge-topic" id="note-topic-badge">Topik 1/4</span>
+        </div>
+        <div id="notes-content" class="mt-4">
+            </div>
+    </div>
+
+    <div class="content-quiz" id="quiz-panel">
+        <div class="sticky-quiz-header d-flex justify-content-between align-items-center">
+            <h4 class="text-primary fw-bold m-0">📝 Ruang Ujian Masteri</h4>
+            <div class="text-end">
+                <span class="badge bg-dark fs-6" id="loop-status">Pusingan Utama</span>
+            </div>
+        </div>
+
+        <div id="quiz-intro-msg" class="alert alert-info mt-3 py-2 fs-7">
+            💡 <b>Arahan Pintar:</b> Jawab semua 25 soalan di bawah, kemudian klik butang <b>SEMAK JAWAPAN</b> di bahagian paling bawah. Jika ada kesilapan, sistem akan menapis dan memaksa anda mengulangi soalan yang salah sahaja sehingga betul semua!
+        </div>
+
+        <form id="quiz-form" class="mt-3">
+            <div id="questions-list">
+                </div>
+            
+            <div class="quiz-card text-center p-4 mt-4" id="action-zone">
+                <div id="score-display" class="mb-3 d-none">
+                    <h5 class="fw-bold" id="score-result-text"></h5>
+                    <div class="progress my-2" style="height: 12px;">
+                        <div id="score-bar" class="progress-bar bg-success" style="width: 0%"></div>
+                    </div>
+                </div>
+                <button type="button" id="btn-action" class="btn btn-success btn-lg px-5 w-100" onclick="evaluateQuiz()">Semak Jawapan 🔍</button>
+                <button type="button" id="btn-next-topic" class="btn btn-primary btn-lg px-5 w-100 mt-2 d-none" onclick="advanceTopic()">Maju Ke Adat Resam Kedua ➡️</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // BANK DATA LENGKAP: 4 TOPIK x 25 SOALAN = 100 SOALAN + NOTA INFOGRAFIK
+    const database = [
+        {
+            topicTitle: "Kaum Kadazandusun (Suku Dusun - Kepercayaan Nunuk Ragang)",
+            badge: "Topik 1: Nunuk Ragang",
+            nextBtnText: "Maju Ke Adat Resam Suku Dusun Subpan ➡️",
+            notesHTML: `
+                <div class='note-card'>
+                    <h5><b>🧬 Makna Etimologi & Asal Tempat</b></h5>
+                    <p><b>Nunuk:</b> Pokok Banyan / Ara Jejawi. <br><b>Ragang:</b> Warna Merah.<br>Secara lisan, ia menggambarkan pokok banyan merah atau gambaran tubuh manusia di sana yang kelihatan kemerahan.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🐓 Legenda Ayam Jantan Ajaib</b></h5>
+                    <p>Ketua Dusun mempunyai ayam jantan sebesat <b>kerbau</b>. Siang mengembara, malam berehat di atas pokok Nunuk Ragang.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🕳️ Mitos Penghuni Bawah Tanah</b></h5>
+                    <p>Semasa menanam <b>padi huma</b>, kedengaran suara dari bawah tanah. Selepas digali, ditemui lubang besar dihuni sekelompok manusia bawah tanah yang mengancam mahu merebut kawasan dan membunuh orang Dusun.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🗺️ Laluan Migrasi Poket Skor</b></h5>
+                    <p><b>Nunuk Ragang</b> (Perpecahan awal) $\rightarrow$ <b>Ranau</b> (Ayam mengais tanah jadi rata) $\rightarrow$ <b>Tambunan</b> (Lari dari musuh bawah tanah) $\rightarrow$ <b>Keningau</b> (Ayam mati akibat sakit tua).</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🔮 Kepercayaan & Pembuktian</b></h5>
+                    <p>Berkaitan dengan amalan <b>Momolianisme / Animisme</b> yang dipelihara oleh golongan <b>Bobolian</b>. <br>⚠️ <b>Fakta Saintifik:</b> Tiada bukti arkeologi kewujudan petempatan ini. Ia kekal dalam domain mitos lisan. <br>🏛️ Tugu Peringatan dibina oleh <b>KDCA pada tahun 2004</b> di <b>Kampung Tampias, Ranau</b>.</p>
+            `,
+            questions: [
+                { id: 1, q: "Apakah maksud perkataan 'Nunuk' dalam bahasa masyarakat suku Dusun?", o: ["Pokok Banyan / Pokok Ara Jejawi", "Warna Merah", "Ayam Jantan", "Lubang Tanah"], a: 0, hint: "Nunuk merujuk kepada sejenis pokok ara yang besar." },
+                { id: 2, q: "Apakah maksud perkataan 'Ragang' mengikut bahasa suku Dusun?", o: ["Pokok Besar", "Warna Merah", "Bunyi Suara", "Kawasan Rata"], a: 1, hint: "Ragang membawa maksud warna yang terang seperti darah." },
+                { id: 3, q: "Secara harfiah, 'Nunuk Ragang' dapat ditafsirkan sebagai...", o: ["Lubang besar berwarna merah", "Ayam jantan seberat kerbau", "Pokok banyan berwarna merah", "Kawasan pertanian padi huma"], a: 2, hint: "Gabungan maksud pokok banyan dan warna merah." },
+                { id: 4, q: "Selain pokok, cerita terdahulu menyatakan 'Nunuk Ragang' merujuk kepada...", o: ["Bulu ayam merah", "Tubuh badan manusia yang kelihatan berwarna merah", "Warna tanah di daerah Ranau", "Air sungai merah"], a: 1, hint: "Merujuk kepada fizikal atau kulit manusia yang kemerahan." },
+                { id: 5, q: "Nunuk Ragang sangat terkenal dalam budaya suku Dusun sebagai...", o: ["Tempat berburu", "Tapak sejarah penting dan penempatan awal", "Pusat perdagangan antik", "Tempat perayaan tarian"], a: 1, hint: "Ia dianggap sebagai asal-usul tempat nenek moyang mereka bermula." },
+                { id: 6, q: "Menurut legenda, apakah haiwan ajaib yang dimiliki oleh ketua kaum Dusun?", o: ["Seekor kerbau balau", "Seekor ayam jantan", "Seekor burung merpati", "Seekor kuda putih"], a: 1, hint: "Haiwan ini boleh terbang dan berbunyi kuat." },
+                { id: 7, q: "Di manakah ayam jantan yang ajaib itu akan berehat pada waktu malam?", o: ["Di dalam lubang bawah tanah", "Di atas pokok Nunuk Ragang", "Di dalam reban di daerah Kudat", "Di atas bumbung rumah"], a: 1, hint: "Ia hinggap di atas dahan pokok ara gergasi tersebut." },
+                { id: 8, q: "Apakah aktiviti pertanian agraria yang dilakukan semasa terdengar suara aneh dari bawah tanah?", o: ["Menanam pokok rumbia", "Menanam padi huma", "Memetik daun tembakau", "Mengutip buah hutan"], a: 1, hint: "Aktiviti bercocok tanam padi di kawasan tanah kering/bukit." },
+                { id: 9, q: "Apakah yang ditemui oleh orang Dusun setelah menggali sumber suara aneh tersebut?", o: ["Harta karun emas", "Sebuah lubang besar dihuni sekelompok manusia bawah tanah", "Akar pokok banyan besar", "Mata air jernih"], a: 1, hint: "Ditemui komuniti manusia misteri yang sudah lama menetap di dalam tanah." },
+                { id: 10, q: "Di manakah terletaknya Tugu Peringatan Nunuk Ragang yang dibina pada tahun 2004?", o: ["Kampung Tampias, Ranau", "Daerah Penampang", "Kampung Lotud, Tuaran", "Daerah Keningau"], a: 0, hint: "Terletak di sebuah kampung di kawasan Ranau." },
+                { id: 11, q: "Berapakah anggaran saiz ayam jantan ajaib milik ketua kaum Dusun?", o: ["Sebesar seekor kambing", "Sebesar seekor kucing", "Dikatakan sebesar seekor kerbau", "Setinggi pokok banyan"], a: 2, hint: "Ukurannya sangat gergasi menyamai mamalia pembajak sawah." },
+                { id: 12, q: "Apakah amaran tegas yang diberikan oleh ketua kumpulan manusia bawah tanah?", o: ["Meminta kongsi hasil padi", "Mahu membeli ayam jantan", "Mahu merebut petempatan Nunuk Ragang dan mengancam membunuh jika tidak berpindah", "Melarang menggali tanah"], a: 2, hint: "Amaran pengusiran secara kekerasan dan ancaman nyawa." },
+                { id: 13, q: "Kejadian ancaman daripada manusia bawah tanah itu akhirnya menyebabkan...", o: ["Mereka menjadi kaya", "Perpindahan dan perpecahan penduduk asal ke pelbagai lokasi di Sabah", "Mereka berhenti menanam padi", "Menukar nama suku kaum"], a: 1, hint: "Menjadi punca utama penyebaran komuniti Dusun ke Kudat, Penampang, dll." },
+                { id: 14, q: "Ke manakah ketua masyarakat Dusun dibawa terbang oleh ayam ajaibnya selepas ancaman?", o: ["Kudat", "Penampang", "Ranau", "Sandakan"], a: 2, hint: "Destinasi pertama penerbangan di mana tanahnya dikais menjadi rata." },
+                { id: 15, q: "Bagaimanakah ayam ajaib tersebut membantu meratakan tanah setibanya di Ranau?", o: ["Menggunakan paruhnya", "Menggunakan cakarnya untuk mengais tanah", "Membina pondok dengan bulunya", "Mengepakkan sayap"], a: 1, hint: "Pergerakan kaki ayam yang biasa digunakan untuk mencari makanan." },
+                { id: 16, q: "Mengapakah ayam ajaib itu terpaksa terbang meninggalkan Ranau menuju ke Tambunan?", o: ["Ranau terlalu sejuk", "Dikejar oleh penghuni bawah tanah berniat jahat yang mahu membunuhnya", "Makanan di Ranau habis", "Diarahkan oleh Bobolian"], a: 1, hint: "Kerana musuh mengejarnya hingga ke petempatan baharu." },
+                { id: 17, q: "Apakah nama daerah terakhir tempat ayam ajaib itu menetap sehinggalah meninggal dunia?", o: ["Tambunan", "Keningau", "Kudat", "Pitas"], a: 1, hint: "Daerah pedalaman selepas Tambunan." },
+                { id: 18, q: "Apakah nama kepercayaan tradisional masyarakat Dusun yang berkaitan dengan interaksi mistik alam dan roh?", o: ["Momolianisme atau animisme", "Tinunui", "Mipayu Do Monunui", "Mononsob"], a: 0, hint: "Sistem kepercayaan tradisional animisme suku Kadazandusun." },
+                { id: 19, q: "Siapakah golongan dalam masyarakat Dusun yang sehingga kini masih memegang teguh kepercayaan elemen kerohanian Nunuk Ragang?", o: ["Golongan usahawan", "Golongan Bobolian", "Golongan pemburu", "Golongan pembuat gong"], a: 1, hint: "Dikenali sebagai pengamal perubatan tradisional atau bomoh/pendeta wanita." },
+                { id: 20, q: "Pertubuhan manakah yang mengambil inisiatif membina tugu peringatan Nunuk Ragang?", o: ["JKKN", "Pertubuhan Kebudayaan Kadazan Dusun Sabah (KDCA)", "Mahkamah Anak Negeri", "Persatuan Sejarah"], a: 1, hint: "Pertubuhan kebudayaan utama bagi kaum Kadazandusun." },
+                { id: 21, q: "Apakah kesimpulan saintifik atau arkeologi mengenai petempatan awal manusia di Nunuk Ragang?", o: ["Banyak tembikar lama ditemui", "Tiada bukti arkeologi yang dapat mengesahkan kewujudan petempatan lampau di situ", "Pokok tersebut disahkan berusia 1000 hari", "Menemui tulang ayam sebesar kerbau"], a: 1, hint: "Kisah ini kekal sebagai naratif tanpa sokongan bukti fizikal tanah." },
+                { id: 22, q: "Memandangkan tiada bukti sokongan saintifik, kisah Nunuk Ragang dikategorikan dalam domain...", o: ["Sejarah bertulis moden", "Buku teks rasmi negara", "Mitos dan naratif lisan", "Dokumen mahkamah rasmi"], a: 2, hint: "Cerita rakyat yang diturunkan melalui lisan dari generasi ke generasi." },
+                { id: 23, q: "Mengapakah legenda ini dianggap sangat bernilai dan terus diwarisi oleh masyarakat Dusun?", o: ["Menjadi elemen penting dalam membentuk identiti, tradisi, dan kepercayaan asal-usul", "Meningkatkan hasil jualan padi", "Syarat wajib memilih ketua kampung", "Digunakan untuk menuntut ganti rugi tanah"], a: 0, hint: "Kerana ia mengekalkan jati diri dan warisan budaya nenek moyang." },
+                { id: 24, q: "Pilih urutan geografi laluan penerbangan dan perpindahan ayam ajaib yang betul:", o: ["Nunuk Ragang -> Ranau -> Tambunan -> Keningau", "Nunuk Ragang -> Kudat -> Penampang -> Sandakan", "Keningau -> Tambunan -> Ranau -> Nunuk Ragang", "Ranau -> Penampang -> Tuaran -> Kampung Tampias"], a: 0, hint: "Bermula dari petempatan asal, kais tanah, lari ke Tambunan dan mati di pedalaman terakhir." },
+                { id: 25, q: "Mengapakah Kampung Tampias di Ranau dipilih secara khusus sebagai tapak pembinaan Tugu Peringatan?", o: ["Mempunyai satu-satunya pokok banyan merah", "Dipercayai sebagai lokasi asal masyarakat Dusun sebelum berpecah dan berpindah", "Tempat ayam ajaib mati sakit tua", "Kawasan bebas daripada manusia bawah tanah"], a: 1, hint: "Dianggap sebagai titik koordinat permulaan sebelum peristiwa migrasi berpecah berlaku." }
+            ]
+        },
+        {
+            topicTitle: "Kaum Kadazandusun (Suku Dusun Subpan - Adat Perkahwinan)",
+            badge: "Topik 2: Suku Dusun Subpan",
+            nextBtnText: "Maju Ke Adat Resam Kaum Brunei ➡️",
+            notesHTML: `
+                <div class='note-card'>
+                    <h5><b>📍 Lokasi & Ekonomi</b></h5>
+                    <p>Mendiami sepanjang <b>Sungai Segama, daerah Lahad Datu</b>. Mengamalkan budaya agraria: padi bukit, ubi kayu, pisang serta menangkap ikan.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>👣 5 Struktur Hierarki Adat Perkahwinan</b></h5>
+                    <p>1. Merisik | 2. Meminang & Bertunang | 3. Menyerahkan Berian | 4. Mangadaa-Adaa & Persandingan | 5. Manandoh & Manukab Batol.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>💤 Adat Merisik & Peminangan</b></h5>
+                    <p>• <b>Merisik:</b> Dilakukan selepas keluarga lelaki mendapat <b>mimpi baik 3 malam berturut-turut</b> sebagai tanda restu roh nenek moyang.<br>• <b>Hantaran belum baligh:</b> Seutas <b>gelang kuning</b>, wang RM1.00 dan seekor ayam betina. Jika sudah baligh, tiada gelang kuning.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>💰 Adat Berian & Sistem Berkhidmat Mentua</b></h5>
+                    <p>• <b>Anak Bongsu:</b> Dikenakan berian khas sebanyak <b>RM500.00</b> zaman dahulu.<br>• Perbelanjaan kenduri 3 hari ditanggung <b>pihak perempuan</b> kerana menantu lelaki wajib tinggal bersamanya dan berkhidmat sepenuhnya.<br>• <b>Zaman Moden:</b> Bertukar kepada 'Belanja Dapur' (RM10k-RM30k) kerana pengantin lebih memilih tinggal berasingan atas faktor kerja.<br>• <b>Menilik Putika:</b> Upacara menentukan tarikh baik (<b>Katam Kubol</b>) dipimpin oleh Bobolian.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🎵 Mangadaa-Adaa & Majlis Manandoh</b></h5>
+                    <p>• <b>Mangadaa-Adaa:</b> Upacara memukul gong serentak sehari sebelum majlis untuk mengelakkan musibah.<br>• <b>Mitos tidur:</b> Jika sanding tertangguh, pengantin wajib berjaga sepanjang malam agar tiada kematian.<br>• <b>Moden:</b> Memilih adat <i>Musilom atau Mutarang</i> yang lebih ringkas dan ada acara potong kek.<br>• <b>Manukab Batol:</b> Acara minum tapai dari tajau pada hari ke-3, diikuti tarian <b>Mangalai</b> & <b>Gabiluk</b> menggunakan selendang <b>Dalundung</b>.</p>
+            `,
+            questions: [
+                { id: 1, q: "Di kawasan manakah petempatan utama bagi masyarakat etnik Dusun Subpan di Sabah?", o: ["Sepanjang Sungai Segama, Lahad Datu", "Daerah Tuaran", "Daerah Ranau", "Kudat"], a: 0, hint: "Terletak di kawasan timur Sabah sepanjang sungai terkenal Lahad Datu." },
+                { id: 2, q: "Antara berikut, yang manakah merupakan aktiviti ekonomi utama bagi budaya agraria Dusun Subpan?", o: ["Menanam padi bukit, ubi kayu, dan pisang", "Menanam kelapa sawit secara besar-besaran", "Melombong emas di sungai", "Membuat kraf tangan perak"], a: 0, hint: "Tiga tanaman ruji pertanian tradisional mereka." },
+                { id: 3, q: "Berapakah jumlah proses atau tahap hierarki yang terdapat dalam struktur adat perkahwinan Dusun Subpan?", o: ["3 proses", "4 proses", "5 proses", "6 proses"], a: 2, hint: "Bermula dari merisik sehingga ke manandoh." },
+                { id: 4, q: "Sebelum memulakan proses merisik, keluarga pihak lelaki mengikut kepercayaan mesti mendapat petanda berupa...", o: ["Bunyi burung hantu", "Mimpi yang baik selama tiga malam", "Hasil tuaian padi melimpah", "Kedatangan ayam jantan ajaib"], a: 1, hint: "Mainan tidur yang membawa khabar gembira selama 3 kali waktu malam." },
+                { id: 5, q: "Mengikut adat meminang, apakah nilai wang tunai yang dibawa bersama seekor ayam betina jika si gadis belum baligh?", o: ["RM1.00", "RM50.00", "RM350.00", "RM500.00"], a: 0, hint: "Nilai nominal asas yang sangat kecil sebagai simbolik purba." },
+                { id: 6, q: "Berapakah nilai hantaran (berian) adat suatu ketika dahulu sekiranya pengantin lelaki merupakan seorang ANAK BONGSU?", o: ["RM50.00", "RM350.00", "RM500.00", "RM1,000.00"], a: 2, hint: "Nilai ratusan ringgit khusus untuk kedudukan anak terakhir dalam keluarga." },
+                { id: 7, q: "Berapakah tempoh hari berturut-turut bagi majlis perkahwinan tradisional Dusun Subpan yang segala perbelanjaannya ditanggung oleh pihak perempuan?", o: ["1 hari", "2 hari", "3 hari", "7 hari"], a: 2, hint: "Bilangan hari kenduri yang sama dengan jumlah malam mimpi baik." },
+                { id: 8, q: "Apakah nama adat memukul gong secara serentak antara pihak lelaki dan perempuan sehari sebelum majlis perkahwinan?", o: ["Mangadaa-Adaa", "Modsuruhan", "Manandoh", "Manukab Batol"], a: 0, hint: "Istilah pemukulan gendang/gong yang berulang-ulang katanya." },
+                { id: 9, q: "Apakah jenis minuman tradisional yang diminum dari tajau (tempayan) semasa Majlis Manandoh pada hari ketiga perkahwinan?", o: ["Air kelapa", "Tapai", "Kinomol", "Kopi"], a: 1, hint: "Minuman beras yang diperam di dalam tempayan." },
+                { id: 10, q: "Pada keesokan hari selepas majlis selesai, pengantin baharu akan melakukan satu aktiviti bersama sebagai simbolik bermulanya kehidupan mencari rezeki iaitu...", o: ["Membuka ladang kecil", "Menunggang kuda", "Menangkap ikan di laut", "Membina bot tradisional"], a: 0, hint: "Membuka sebidang tanah pertanian pertanian kecil sebagai suami isteri." },
+                { id: 11, q: "Apakah barangan TAMBAHAN yang mesti dibawa dalam hantaran meminang jika si gadis didapati belum mencapai usia baligh?", o: ["Sebentuk cincin perak", "Seutas gelang kuning", "Sebilah parang tradisional", "Sapu tangan sutera"], a: 1, hint: "Perhiasan tangan berwarna keemasan/kuning." },
+                { id: 12, q: "Sekiranya barang pinangan tidak dikembalikan selepas tiga hari, ini bermakna...", o: ["Pinangan ditolak", "Pinangan telah diterima", "Keluarga mahu menukar tarikh", "Mesti membayar denda Sogit"], a: 1, hint: "Tanda persetujuan senyap daripada pihak keluarga perempuan." },
+                { id: 13, q: "Semasa adat bertunang, berapakah nilai wang tanda pertunangan yang dihantar bersama sebentuk cincin di dalam bungkusan sapu tangan?", o: ["RM1.00", "RM50.00", "RM100.00", "RM500.00"], a: 1, hint: "Nilai ringgit bersamaan dengan wang hantaran anak bongsu dibahagi sepuluh." },
+                { id: 14, q: "Mengapakah perbelanjaan kenduri tradisional ditanggung sepenuhnya oleh pihak pengantin perempuan?", o: ["Pihak lelaki tidak berduit", "Menantu lelaki dianggap seperti anak lelaki sendiri yang akan tinggal dan berkhidmat untuk mentua", "Arahan rasmi ketua kampung", "Pihak perempuan tentukan menu"], a: 1, hint: "Berkaitan dengan tradisi menantu lelaki berpindah masuk dan bekerja membantu keluarga isteri." },
+                { id: 15, q: "Apakah nama adat penentuan tarikh perkahwinan yang sesuai (Katam Kubol) yang dipimpin oleh Bobolian?", o: ["Menutur", "Menilik Putika", "Mangadaa-Adaa", "Manukab Batol"], a: 1, hint: "Proses meramal hari baik berdasarkan tilikan." },
+                { id: 16, q: "Mengapakah upacara pukulan gong 'Mangadaa-Adaa' WAJIB dilakukan secara serentak antara kedua-dua pihak?", o: ["Menguji kekuatan alat muzik", "Mengelakkan perkara tidak diingini khususnya musibah kepada mempelai dan majlis", "Syarat melantik ketua kampung", "Mengejutkan tetamu"], a: 1, hint: "Untuk menghalau elemen negatif dan mengelakkan nasib malang/musibah." },
+                { id: 17, q: "Jika persandingan tradisional ditangguhkan akibat selisih faham, apakah pantang larang yang mesti dipatuhi pasangan pengantin pada malam tersebut?", o: ["Dilarang bercakap", "Dikehendaki berjaga sepanjang malam untuk mengelakkan musibah atau kematian", "Mesti keluar berburu", "Tidak boleh pakai baju adat"], a: 1, hint: "Mereka dilarang tidur atau melelapkan mata semalaman." },
+                { id: 18, q: "Apakah nama jenis perkahwinan masa kini yang dipilih suku Dusun Subpan kerana lebih ringkas dan kurang pantang larang?", o: ["Musilom atau Mutarang", "Rinapa'an", "Momolianisme", "Tinantangap"], a: 0, hint: "Dua istilah perkahwinan kontemporari atau moden ringkas." },
+                { id: 19, q: "Semasa tarian tradisional, barangan apakah yang dilepaskan ke atas bahu seseorang tanpa disedari untuk menentukan siapa yang perlu menari?", o: ["Segenggam padi", "Sehelai sapu tangan khas termasuk Dalundung", "Sebilah keris perak", "Sebuah gong kecil"], a: 1, hint: "Kain penutup kepala perkahwinan tradisional atau sapu tangan." },
+                { id: 20, q: "Dua jenis persembahan tarian tradisional yang dimainkan untuk memeriahkan Majlis Manandoh ialah...", o: ["Tarian Zapin dan Kipas", "Tarian Mangalai dan Gabiluk", "Tarian Pinakang dan Ngajat", "Tarian Singa dan Bharatanatyam"], a: 1, hint: "Tarian bermula dengan huruf M dan G." },
+                { id: 21, q: "Berdasarkan perubahan zaman, mengapakah kos 'belanja dapur' pada masa sekarang melonjak tinggi (RM10k-RM30k) dibayar pihak lelaki?", o: ["Harga ternakan naik", "Pengantin kini lebih memilih tinggal berasingan membina rumah sendiri (faktor pekerjaan) dan tidak berkhidmat dengan mentua", "Bayaran tilikan Bobolian mahal", "Majlis wajib seminggu"], a: 1, hint: "Kerana menantu lelaki tidak lagi tinggal bersama dan berkhidmat kepada mentuanya seperti adat asal." },
+                { id: 22, q: "Sesi memukul gong sepanjang hari tanpa henti atau pada sela waktu jam 7 malam hingga 10 malam merujuk kepada upacara...", o: ["Modsuruhan", "Menilik Putika", "Mangadaa-Adaa", "Manukab Batol"], a: 2, hint: "Upacara bunyi-bunyian sehari sebelum hari perkahwinan." },
+                { id: 23, q: "Apakah bukti integrasi unsur moden (kontemporari) dalam majlis perkahwinan jenis Musilom atau Mutarang pada masa kini?", o: ["Tidak lagi pakai baju adat", "Adanya acara moden seperti pemotongan kek perkahwinan", "Menggunakan gitar elektrik menggantikan gong", "Tilikan menggunakan komputer"], a: 1, hint: "Satu acara wajib dalam resepsi barat moden yang melibatkan makanan manis bertingkat." },
+                { id: 24, q: "Dalam Majlis Manandoh, terdapat acara 'Manukab Batol'. Aktiviti utama yang membuka acara ini ialah...", o: ["Memotong kek", "Pasangan pengantin memulakan upacara meminum tapai dari tajau diiringi gong canang", "Ketua kampung membakar kayu", "Pengantin perempuan berlari elak menari"], a: 1, hint: "Ritual meminum minuman tradisi terus daripada tempayan purba." },
+                { id: 25, q: "Mengapakah proses merisik sangat menekankan pemeriksaan sama ada si gadis sudah mencapai usia baligh atau belum?", o: ["Menentukan jumlah gong", "Menentukan perbezaan jenis dan jumlah barang hantaran pinangan (seperti gelang kuning)", "Memastikan pengantin boleh menari", "Menentukan jenis tajau tapai"], a: 1, hint: "Sebab status baligh mengubah struktur barang hantaran (sama ada perlu membawa gelang kuning atau tidak)." }
+            ]
+        },
+        {
+            topicTitle: "Kaum Brunei - Adat Perkahwinan (Istiadat Badak-Badak Mandi & Malam Berinai)",
+            badge: "Topik 3: Adat Kaum Brunei",
+            nextBtnText: "Maju Ke Adat Resam Kaum Bajau Semporna ➡️",
+            notesHTML: `
+                <div class='note-card'>
+                    <h5><b>🎭 3 Struktur Utama</b></h5>
+                    <p>Terdiri daripada istiadat <b>Badak-Badak Mandi</b> (siang), malam <b>Babadak</b> (malam jemputan ramai), dan malam <b>Berinai / Bepacar</b> (lewat malam).</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🔒 Fasa Pengangunan & Mitos Libas</b></h5>
+                    <p>• Pengantin wanita dikurung 7 hari serba putih di dalam bilik dijaga oleh <b>Penganggun</b> (Mak Andam wanita berusia).<br>• ❌ <b>Pantang Cermin:</b> Dilarang keras melihat cermin kerana boleh mendatangkan fenomena <b>Libas</b> (membatalkan jampi penyeri wajah).</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>💦 Istiadat Badak-Badak Mandi</b></h5>
+                    <p>• Ibu bapa mencalit dahi dan telapak tangan dengan lulur beras + kunyit + bunga melor. Penganggun melumur seluruh badan.<br>• <b>Air Langir:</b> Campuran kayu langir, limau nipis dan limau purut.<br>• 🕯️ <b>Ritual Lilin:</b> Pengantin dikelilingi <b>7 kanak-kanak</b> memegang lilin, pengantin mesti <b>menyembur air melalui mulut 3 kali</b> untuk memadamkan lilin.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>✨ Malam Babadak & Adat Menggendong</b></h5>
+                    <p>• Menggunakan hiasan tikar baldu bersulam emas dan lilin kuning dipanggil <b>Dian</b> di penjuru pelamin.<br>• Bedak tradisional disediakan dalam <b>7 warna</b> (simbol kesempurnaan).<br>• Pengantin perempuan <b>digendong ke pelamin</b> sebagai penghormatan tertinggi. Ada acara tetamu 'menculiki' pengantin.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🌿 Malam Berinai (Bepacar)</b></h5>
+                    <p>Dilakukan lewat malam selepas bertangas kain putih. Pengantin dibawa <b>mengelilingi katil sebanyak 3 kali</b> sebelum dicalit inai oleh orang tua. Hanya dihadiri Penganggun dan 2-3 perempuan tua sahaja.</p>
+            `,
+            questions: [
+                { id: 1, q: "Apakah kaum di Sabah yang mengamalkan Istiadat Badak-Badak Mandi dan Malam Berinai berdasarkan nota?", o: ["Kaum Kadazandusun", "Kaum Brunei", "Kaum Bajau Laut", "Kaum Murut"], a: 1, hint: "Suku kaum yang sering dikaitkan dengan tradisi melulur bedak bertingkat warna ini." },
+                { id: 2, q: "Antara berikut, yang manakah fungsi utama bagi pelaksanaan istiadat Badak-Badak Mandi?", o: ["Menghalau haiwan liar", "Menaikkan seri wajah pengantin yang bakal naik ke pelamin", "Menentukan tarikh hari pernikahan", "Melatih pengantin cara menari"], a: 1, hint: "Menyerlahkan kecantikan, kehalusan kulit, dan aura wajah raja sehari." },
+                { id: 3, q: "Bedak lulur tradisional bagi kaum Brunei diperbuat daripada campuran tepung beras dan bahan alami iaitu...", o: ["Daun pisang", "Kunyit", "Bunga raya", "Kayu manis"], a: 1, hint: "Bahan dapur alami berwarna kuning yang juga digunakan dalam masakan." },
+                { id: 4, q: "Apakah nama fasa penjagaan khas di mana pengantin perempuan akan dijaga sepenuhnya oleh Mak Andam?", o: ["Fasa Penuturan", "Fasa Pengangunan", "Fasa Katam Kubol", "Fasa Mirapou"], a: 1, hint: "Berasal daripada nama gelaran penjaga pengantin itu sendiri." },
+                { id: 5, q: "Apakah panggilan bagi Mak Andam yang mahir dalam mengendalikan adat istiadat perkahwinan kaum Brunei?", o: ["Bobolian", "Penganggun", "Imam", "Hadirin"], a: 1, hint: "Individu wanita berusia yang dilantik menguruskan fasa kurungan pengantin." },
+                { id: 6, q: "Apakah warna pakaian yang HARUS dikenakan oleh bakal pengantin perempuan semasa fasa pengangunan?", o: ["Serba hitam", "Kuning diraja", "Serba putih", "Merah terang"], a: 2, hint: "Warna yang melambangkan kesucian dan kebersihan rohani." },
+                { id: 7, q: "Di manakah istiadat Badak-Badak Mandi biasanya dijalankan?", o: ["Di balai raya kampung", "Di rumah masing-masing secara berasingan", "Di masjid daerah", "Di kawasan tepi sungai besar"], a: 1, hint: "Diadakan secara eksklusif di kediaman sendiri bersama keluarga terdekat." },
+                { id: 8, q: "Siapakah orang yang paling PERTAMA diberikan penghormatan untuk mencalit bedak tradisional pada pengantin?", o: ["Ketua kampung", "Sahabat handai", "Kedua-dua ibu bapa pengantin", "Kanak-kanak pembawa lilin"], a: 2, hint: "Orang yang paling rapat dan membesarkan anak sejak kecil." },
+                { id: 9, q: "Apakah nama lilin khas berwarna kuning yang diletakkan di setiap penjuru tempat duduk pengantin semasa malam Babadak?", o: ["Dian", "Pacar", "Langir", "Gandi"], a: 0, hint: "Kata nama klasik bagi lilin." },
+                { id: 10, q: "Apakah nama panggilan dalam bahasa Brunei Sabah bagi proses 'Berinai'?", o: ["Babadak", "Bepacar", "Libas", "Tangas"], a: 1, hint: "Istilah tempatan bermula dengan huruf B dan mengandungi unsur kata 'pacar'." },
+                { id: 11, q: "Mengapakah dalam era moden ini istiadat ini lazimnya digabungkan dan dibuat sehari sebelum nikah?", o: ["Barang tradisional habis", "Kekangan masa, faktor pekerjaan, dan keterbatasan cuti pasangan", "Diarahkan oleh ketua kampung", "Membolehkan orang kampung datang siang"], a: 1, hint: "Faktor kesibukan gaya hidup kerjaya moden kini." },
+                { id: 12, q: "Mengapakah bakal pengantin dilarang melihat cermin semasa tempoh fasa pengangunan?", o: ["Cermin akan pecah", "Boleh menyebabkan fenomena 'Libas' (membatalkan jampi penyeri)", "Dilarang merias wajah sendiri", "Mengelakkan pengantin berasa takut"], a: 1, hint: "Sebab ia dipercayai melibas atau merosakkan aura magis penyeri wajah." },
+                { id: 13, q: "Apakah barangan hiasan kepala tradisional yang dipakai oleh bakal pengantin perempuan semasa istiadat Badak-Badak Mandi?", o: ["Sundi", "Gandi", "Siwot", "Sigar"], a: 1, hint: "Mahkota/hiasan kepala tradisional bermula dengan huruf G." },
+                { id: 14, q: "Selain wajah, bahagian tubuh manakah yang dibenarkan untuk dicalit oleh ahli keluarga terdekat?", o: ["Bahu dan lengan tangan", "Dahi dan kedua-dua belah telapak tangan", "Kaki dan lutut pengantin", "Rambut dan belakang badan"], a: 1, hint: "Kawasan muka atas dan bahagian tapak tangan yang digunakan untuk menerima calitan." },
+                { id: 15, q: "Apakah 'Air Langir' yang digunakan untuk menyiram pengantin selepas proses lulur selesai?", o: ["Air sulingan bunga ros", "Campuran air dan kayu langir yang wangi, perahan limau nipis, serta limau purut", "Air kelapa muda", "Air tawar dari bukit"], a: 1, hint: "Campuran herba semulajadi yang mengandungi kayu hutan wangi dan buah jenis sitrus." },
+                { id: 16, q: "Semasa proses penyiraman air langir, berapakah jumlah kanak-kanak berselendang yang akan mengelilingi pengantin?", o: ["3 orang", "5 orang", "7 orang", "9 orang"], a: 2, hint: "Angka ganjil keramat yang sering muncul dalam adat (antara 5 dan 9)." },
+                { id: 17, q: "Bagaimanakah cara unik bakal pengantin memadamkan lilin-lilin yang dipegang oleh kanak-kanak?", o: ["Meniup menggunakan hidung", "Mengibas menggunakan selendang", "Dengan cara menyembur air melalui mulut sebanyak tiga (3) kali", "Memadamkan menggunakan jari"], a: 2, hint: "Menggunakan pancutan air semburan dari rongga mulut." },
+                { id: 18, q: "Apakah perbezaan utama yang paling ketara antara istiadat Badak-Badak Mandi dan upacara Malam Babadak?", o: ["Waktu mandi malam, babadak waktu subuh", "Mandi guna inai, babadak guna kain putih", "Mandi diadakan siang (keluarga terdekat), manakala babadak diadakan malam (ramai jemputan)", "Mandi untuk ketua kampung, babadak untuk kanak-kanak"], a: 2, hint: "Perbezaan terletak pada skala kehadiran jemputan dan waktu (siang keluarga lwn malam keramaian)." },
+                { id: 19, q: "Apakah bentuk dan hiasan tikar khas yang digunakan untuk menghias pelamin pengantin semasa Malam Babadak?", o: ["Tikar bulat anyaman rotan", "Tikar segi empat daripada kain baldu bersulam emas", "Tikar panjang daun pandan", "Tikar sutera putih kosong"], a: 1, hint: "Tikar mewah segiempat berasaskan tekstil baldu yang ditenun benang berkilau emas." },
+                { id: 20, q: "Dalam ritual malam bebadak, tetamu akan mengambil bahagian dalam sesi 'menculiki' pengantin perempuan untuk...", o: ["Membatal majlis", "Meraikan pengantin lelaki yang kemudian diiringi masuk duduk bersama di pelamin", "Meminta wang tebusan", "Menukar baju pengantin perempuan"], a: 1, hint: "Adat gurauan untuk membawa masuk pengantin lelaki menyertai pasangannya." },
+                { id: 21, q: "Berapakah bilangan warna bedak tradisional yang disusun di tempat khas semasa upacara Malam Babadak?", o: ["Tiga (3) warna", "Lima (5) warna", "Tujuh (7) warna", "Sembilan (9) warna"], a: 2, hint: "Jumlah bilangan warna yang sama dengan bilangan kanak-kanak pembawa lilin." },
+                { id: 22, q: "Apakah simbolik di sebalik perbuatan menggendong pengantin perempuan ke atas pelamin semasa upacara Malam Babadak?", o: ["Tanda pengantin tidak boleh berjalan", "Melambangkan penghormatan tertinggi terhadap pengantin perempuan sebagai pusat perhatian", "Memastikan baju adat tidak kotor", "Denda adat kerana datang lewat"], a: 1, hint: "Sebagai tanda memuliakan kedudukan wanita tersebut sebagai ratu sehari." },
+                { id: 23, q: "Pilih urutan ritual pengantin perempuan selepas Malam Babadak selesai SEBELUM proses berinai (Bepacar):", o: ["Arak keliling kampung -> siram air langir -> pakai gandi", "Dibawa masuk bilik -> dimandikan -> disalinkan kain putih -> bertangas -> pakai baju babadak semula", "Duduk di katil -> dicalit dahi -> lihat cermin -> tiup lilin", "Digendong ke pelamin -> memadam lilin 3 kali -> lulur kunyit ke kaki"], a: 1, hint: "Masuk bilik, mandi cuci bedak, tukar kain putih, proses wap herba (tangas), lalu bersiap semula." },
+                { id: 24, q: "Semasa upacara Malam Berinai (Bepacar) di dalam bilik, pengantin akan dibawa mengelilingi katil sebanyak...", o: ["1 kali", "3 kali", "7 kali", "9 kali"], a: 1, hint: "Bilangan pusingan yang sama dengan kekerapan menyembur air padam lilin." },
+                { id: 25, q: "Siapakah yang dibenarkan hadir secara adat semasa upacara Malam Berinai (Bepacar) dijalankan lewat malam di dalam bilik?", o: ["Semua penduduk kampung", "Kanak-kanak pembawa dian kuning", "Hanya Penganggun dan dua atau tiga orang perempuan tua yang mahir adat Brunei", "Pengantin lelaki dan rakan karibnya"], a: 2, hint: "Sesi ini sangat tertutup, hanya untuk pengandem dan beberapa wanita veteran sahaja." }
+            ]
+        },
+        {
+            topicTitle: "Kaum Bajau Semporna - Adat Korban Suku Ubian & Pantang Larang Kematian",
+            badge: "Topik 4: Adat & Kematian Bajau",
+            nextBtnText: "🎉 Tahniah! Anda Selesai Semua Topik Masteri!",
+            notesHTML: `
+                <div class='note-card'>
+                    <h5><b>🐐 Adat Korban Si Mati (Suku Ubian)</b></h5>
+                    <p>• Haiwan dianggap wakil roh: Diletakkan di ruang khas, diberi makan <b>nasi kuning & kopi</b> seminggu sebelum sembelih.<br>• Imam memandikan haiwan selepas solat Aidiladha, disembur minyak attar/kasturi.<br>• 🧕 <b>Pakaian Haiwan:</b> Kepala diikat <b>serban putih</b> (kedaulatan roh), badan dipakaikan <b>kain pelikat</b> (supaya roh tidak bertelanjang di Padang Mahsyar).<br>• Catatan kertas nama arwah <b>ditanam bersama darah</b> dalam lubang 1 kaki.<br>• 🍃 <b>Daun Betik:</b> Batang daun betik ditiup ke daging sebelum melapah untuk halau hantu/jin.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🏳️ Tanda Kematian & Dulang Lampai</b></h5>
+                    <p>• Bendera putih dinaikkan di hadapan rumah tanda kematian.<br>• 🍱 <b>Lampai Kapataiyan:</b> Dulang barangan peribadi/sedekah. Bilangan ganjil: <b>7 dulang lelaki, 5 dulang wanita</b>.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🪵 Struktur Fizikal Makam</b></h5>
+                    <p>• <b>Sunduk (Batu Nisan):</b> Reka bentuk beza jantina. <b>Bulat & tinggi</b> (Lelaki), <b>Leper</b> (Wanita).<br>• <b>Dinding Hali:</b> 15-20 batang kayu belian disusun dalam liang menutupi mayat.<br>• <b>Panji-Panji:</b> Suku Palauh guna bendera ganjil bertingkat (5,7,9,11) warna merah, kuning, hijau. Suku Sikubung/Ubian guna kayu ditutupi kain luhul putih.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🚶 Adat Pasuhuk & Keteguran</b></h5>
+                    <p>Ahli keluarga melintas di bawah keranda <b>3 kali</b> (Pasuhuk) semasa diusung supaya roh tidak ingat yang hidup dan elak penyakit misteri (<b>keteguran</b>). Orang luar yang terserempak wajib membuang beras/air ke tanah.</p>
+                </div>
+                <div class='note-card'>
+                    <h5><b>🍲 Pasca Pengebumian (Magbahangi)</b></h5>
+                    <p>• Menyediakan katil replika dipanggil <b>Bangkai-Bangkaian</b> serta hidangan <b>Dulang Po'on</b> untuk imam (Ngipat Bahangi).<br>• <b>Bahangi Heya (Kenduri Besar):</b> Hari ke-3, 7, 20, 40, 100. Hari ke-7 ada adat <b>Magparuaih Umagad</b> (turunkan roh). Hari ke-40 roh beralih sepenuhnya ke akhirat.<br>• <b>Bahangi Silung (Kenduri Kecil):</b> Hari ke-10, 17, 27, 37 (Hidang makanan <b>Kok Dulang</b>).<br>• <b>Magjaga-Jaga:</b> Menjaga kubur daripada haiwan/<i>Kang-Kang Laut</i> kerana tanah berbatu dan cetek.</p>
+            `,
+            questions: [
+                { id: 1, q: "Di manakah kawasan pesisir Sabah yang menjadi petempatan utama bagi masyarakat Bajau suku Ubian?", o: ["Tambunan dan Keningau", "Pulau Banggi, Kudat, Sandakan, Kunak, Lahad Datu, dan Semporna", "Tuaran dan Kota Belud", "Penampang dan Papar"], a: 1, hint: "Petempatan meluas di kawasan pulau dan pesisir pantai timur/utara Sabah." },
+                { id: 2, q: "Berdasarkan kepercayaan Bajau Ubian, haiwan korban dalam adat si mati berfungsi sebagai...", o: ["Hadiah perhiasan", "Tunggangan roh si mati untuk menuju ke Padang Mahsyar dengan selamat", "Hidangan perkahwinan", "Penjaga rumah arwah"], a: 1, hint: "Kenderaan spiritual roh untuk menyeberang ke alam akhirat." },
+                { id: 3, q: "Proses persediaan bagi menguruskan haiwan korban untuk si mati ini dimulakan seawal...", o: ["Sebulan sebelum", "Tiga hari selepas kematian", "Seminggu sebelum hari penyembelihan", "Pada pagi hari raya"], a: 2, hint: "Tempoh 7 hari sebelum tibanya tarikh penyembelihan." },
+                { id: 4, q: "Mengapakah haiwan korban tersebut dilayan diberi makanan istimewa di dalam ruang khas rumah?", o: ["Supaya boleh dijual mahal", "Dianggap sebagai wakil roh si mati yang harus diperlakukan dengan penuh hormat seolah masih hidup", "Mudah jatuh sakit di luar", "Elak dicuri jiran"], a: 1, hint: "Haiwan tersebut dilayan seperti kehadiran fizikal arwah itu sendiri." },
+                { id: 5, q: "Bilakah waktu pelaksanaan bagi proses memandikan dan menyembelih haiwan korban ini dijalankan?", o: ["Waktu subuh sebelum solat", "Selepas solat Aidiladha dilaksanakan", "Waktu malam sebelum raya", "Seminggu selepas raya korban"], a: 1, hint: "Menuruti ketetapan waktu penyembelihan hari raya haji dalam Islam." },
+                { id: 6, q: "Kain berwarna apakah yang digunakan sebagai serban untuk diikat pada tanduk atau kepala haiwan korban?", o: ["Kain kuning diraja", "Kain hitam gelap", "Kain putih bersih", "Kain merah terang"], a: 2, hint: "Kain putih yang melambangkan kesucian iman arwah." },
+                { id: 7, q: "Apakah jenis kain yang dipakaikan pada tubuh haiwan korban sebagai simbol pakaian terakhir roh?", o: ["Kain bertenun emas", "Kain selendang Sandai", "Kain pelikat", "Kain putih bermanik"], a: 2, hint: "Pakaian sarung tradisi lelaki yang sering bermotif kotak-kotak." },
+                { id: 8, q: "Berapakah ukuran kedalaman lubang tanah yang dikorek sebagai takungan untuk aliran darah haiwan korban?", o: ["Sedalam 1 kaki", "Sedalam 3 kaki", "Sedalam 5 kaki", "Sedalam 7 kaki"], a: 0, hint: "Ukuran kedalaman pembaris sekolah standard (12 inci)." },
+                { id: 9, q: "Apakah alat alami yang ditiup ke arah daging haiwan korban sebelum proses melapah dimulakan?", o: ["Batang buluh muda", "Batang daun betik", "Batang pokok pisang", "Seruling tradisional"], a: 1, hint: "Batang daripada tumbuhan berongga yang buahnya berwarna jingga manis apabila masak." },
+                { id: 10, q: "Antara berikut, manakah kombinasi makanan istimewa yang diberikan kepada haiwan korban semasa persediaan?", o: ["Ubi kayu dan pisang", "Nasi kuning dan kopi (atau makanan kegemaran arwah)", "Rumput segar dan air garam", "Padi huma dan air kelapa"], a: 1, hint: "Sajian karbohidrat beras berwarna kuning cerah ditemani minuman hitam pekat." },
+                { id: 11, q: "Mengapakah pemakaian kain pelikat pada haiwan korban dianggap sangat wajib bagi masyarakat Bajau Ubian?", o: ["Supaya tidak sejuk", "Khuatir roh si mati memasuki Padang Mahsyar dalam keadaan berbogel (aib maruah)", "Elak daging terkena kotoran", "Hiasan pelamin"], a: 1, hint: "Untuk menjaga aib dan maruah arwah agar tidak terlanjur tanpa busana di alam sana." },
+                { id: 12, q: "Bagaimanakah pengurusan helaian kertas catatan butiran arwah dilakukan SELEPAS selesai upacara penyembelihan?", o: ["Dibakar abunya ditiup angin", "Simpan dalam tajau rumah", "Direndam bersama darah haiwan korban dan ditanam di tapak penyembelihan", "Serah semula kepada isteri arwah"], a: 2, hint: "Disatukan dengan cecair hayat sembelihan lalu dikubur bersama di lubang takungan." },
+                { id: 13, q: "Apakah tanda atau isyarat awal yang dinaikkan oleh keluarga di hadapan rumah untuk memaklumkan kematian?", o: ["Bendera atau kain putih", "Bendera merah bertingkat", "Kain baldu bersulam emas", "Pukulan gong serentak"], a: 0, hint: "Tekstil ringkas tanpa corak berwarna putih dikibarkan di tiang depan rumah." },
+                { id: 14, q: "Berapakah jumlah bilangan ganjil dulang hantaran sedekah (Lampai Kapataiyan) yang wajib disediakan mengikut jantina?", o: ["Lelaki 3, Wanita 5", "Lelaki 5, Wanita 7", "Lelaki 7, Wanita 5", "Lelaki 9, Wanita 9"], a: 2, hint: "Kuantiti dulang lelaki adalah paling tinggi (tujuh) berbanding wanita (lima)." },
+                { id: 15, q: "Apakah nama istilah tempatan bagi batu nisan dalam adat pengebumian masyarakat Bajau?", o: ["Luhul", "Sunduk", "Sundi", "Sandai"], a: 1, hint: "Nama bermula dengan huruf S dan diakhiri dengan 'duk'." },
+                { id: 16, q: "Bagaimanakah cara untuk membezakan jantina si mati berdasarkan bentuk fizikal batu nisan (sunduk)?", o: ["Lelaki leper, Wanita bulat", "Lelaki berbentuk bulat, Wanita berbentuk leper", "Lelaki manik merah, Wanita kain putih", "Lelaki perak, Wanita kayu belian"], a: 1, hint: "Nisan lelaki mempunyai potongan silinder berpusing (bulat), manakala wanita dipotong nipis papan (leper)." },
+                { id: 17, q: "Apakah yang dimaksudkan dengan 'Dinding Hali' yang berjumlah 15 hingga 20 batang di dalam kuburan?", o: ["Payung rangka empat segi", "Bendera kecil berwarna", "Kayu jenis belian yang disusun untuk menutupi mayat", "Kain putih atas kubur"], a: 2, hint: "Susunan struktur kayu belian keras pelindung jasad dari runtuhan tanah." },
+                { id: 18, q: "Berapakah bilangan pusingan ahli keluarga dikehendaki melintas di bawah keranda (Pasuhuk) semasa diusung?", o: ["1 kali", "3 kali", "5 kali", "7 kali"], a: 1, hint: "Kekerapan melintas di bawah keranda yang sama dengan jumlah kali sembur air padam lilin." },
+                { id: 19, q: "Apakah nama kenduri tahunan yang diadakan oleh keluarga mengikut kalendar bagi memperingati pemergian arwah?", o: ["Bahangi Heya", "Bahangi Silung", "Kammattian", "Kok Dulang"], a: 2, hint: "Sebutannya hampir sama dengan istilah 'kematian' dalam bahasa Melayu rasmi." },
+                { id: 20, q: "Apakah tujuan utama dilakukan ritual 'Pasuhuk' (melintas di bawah keranda) oleh ahli keluarga?", o: ["Tuntut ganti rugi tanah", "Agar si mati tidak mengingati keluarga yang hidup sekali gus elak gangguan rohani (keteguran)", "Memastikan keranda ringan", "Isyarat tarian terakhir"], a: 1, hint: "Memotong rantaian ingatan emosi roh kepada ahli keluarga agar tidak membawa penyakit keteguran." },
+                { id: 21, q: "Apakah pantang larang komuniti sekiranya terserempak dengan rombongan membawa jenazah di jalanan?", o: ["Berpatah balik lari pulang", "Barangan air atau makanan (terutamanya beras) yang dipegang wajib dibuang ke tanah", "Menyanyi lagu moninjau", "Wajib ikut sampai kubur"], a: 1, hint: "Makanan/beras di tangan mesti dicurahkan ke bumi untuk menolak bala bawaan jenazah." },
+                { id: 22, q: "Apakah yang dimaksudkan dengan istilah 'Bangkai-Bangkaian' selepas fasa pengebumian?", o: ["Replika keranda batang pisang", "One set tempat tidur lengkap dengan bantal dan susunan pakaian si mati", "Hidangan talam kanak-kanak", "Boneka kain halau hantu"], a: 1, hint: "Susunan formasi tilam, bantal dan busana membentuk jasad simulasi arwah di dalam rumah." },
+                { id: 23, q: "Mengapakah kenduri tujuh hari (Bahangi Pitu’) dianggap sebagai kenduri arwah yang paling besar dalam kategori Bahangi Heya?", o: ["Sajian wajib daging kerbau", "Diadakan adat Magparuaih Umagad (menurunkan roh) yang dipercayai hari terakhir roh di rumah", "Majlis dipimpin Bobolian Ranau", "Batu nisan dicabut semula"], a: 1, hint: "Ada upacara penurunan atau pelepasan roh pada hari terakhirnya berada di persekitaran rumah." },
+                { id: 24, q: "Suku Bajau Ubian/Sikubung mengamalkan adat 'Magjaga-Jaga' kubur. Apakah sebab logik geografi adat ini dilakukan?", o: ["Bimbang batu nisan dicuri", "Tanah pulau keras/berbatu menyebabkan kubur cetek, bau mayat merangsang anjing/babi hutan menyelongkar", "Syarat mutlak agama Islam", "Elak manusia bawah tanah merebut tapak"], a: 1, hint: "Struktur bumi kepulauan Semporna yang berbatu menghadkan kedalaman liang, mengundang ancaman haiwan liar penusuk bau." },
+                { id: 25, q: "Apakah entiti mistik laut yang dikhuatiri akan menyelongkar kubur jika adat Magjaga-Jaga diabaikan?", o: ["Kang-Kang Laut (Hantu laut)", "Jin bawah tanah Nunuk Ragang", "Penganggun berniat jahat", "Roh terkena libas"], a: 0, hint: "Nama hantu air/maritim tempatan yang bermula dengan suku kata 'Kang'." }
+            ]
+        }
+    ];
+
+    let currentTopicIndex = 0;
+    let wrongQuestionsPool = []; // Menyimpan soalan yang salah untuk pusingan ulangan
+    let isRemediationLoop = false; // Status mod sama ada pusingan utama atau pusingan pembetulan
+
+    // FUNGSI MEMULAKAN UTAMA/TOPIK BAHARU
+    function initTopic() {
+        isRemediationLoop = false;
+        wrongQuestionsPool = [];
+        
+        const data = database[currentTopicIndex];
+        
+        // Kemas kini komponen teks
+        document.getElementById("note-topic-badge").innerText = data.badge;
+        document.getElementById("notes-content").innerHTML = data.notesHTML;
+        document.getElementById("loop-status").innerText = "Pusingan Utama (25 Soalan)";
+        document.getElementById("loop-status").className = "badge bg-dark fs-6";
+        document.getElementById("score-display").classList.add("d-none");
+        document.getElementById("quiz-intro-msg").classList.remove("d-none");
+        
+        document.getElementById("btn-action").classList.remove("d-none");
+        document.getElementById("btn-next-topic").classList.add("d-none");
+
+        // Render senarai soalan utama
+        renderQuestions(data.questions);
+        document.getElementById("notes-panel").scrollTop = 0;
+        document.getElementById("quiz-panel").scrollTop = 0;
+    }
+
+    // FUNGSI BINA & PAPAR SOALAN PADA SKRIN
+    function renderQuestions(questionsArray) {
+        const container = document.getElementById("questions-list");
+        container.innerHTML = "";
+
+        questionsArray.forEach((item, index) => {
+            const card = document.createElement("div");
+            card.className = "quiz-card";
+            card.id = `qcard-${item.id}`;
+            
+            // Set data atribut rahsia untuk rujukan semakan jawapan nanti
+            card.setAttribute("data-qid", item.id);
+            card.setAttribute("data-correctidx", item.a);
+
+            let optionsHTML = "";
+            item.o.forEach((opt, oIdx) => {
+                optionsHTML += `
+                    <label class="option-label" id="label-${item.id}-${oIdx}">
+                        <input type="radio" name="name-q-${item.id}" value="${oIdx}" class="form-check-input me-2">
+                        ${opt}
+                    </label>
+                `;
+            });
+
+            card.innerHTML = `
+                <p class="fw-bold mb-2 text-dark">${index + 1}. ${item.q}</p>
+                <div>${optionsHTML}</div>
+                <div class="hint-text" id="hint-${item.id}">💡 Petunjuk: ${item.hint}</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // FUNGSI UTAMA: SEMAK & NILAI JAWAPAN MURID
+    function evaluateQuiz() {
+        const data = database[currentTopicIndex];
+        const cardsList = document.getElementById("questions-list").getElementsByClassName("quiz-card");
+        
+        let currentQuestionsSet = isRemediationLoop ? wrongQuestionsPool : data.questions;
+        let correctCount = 0;
+        let localWrongPool = [];
+
+        // Gelung semakan jawapan pilihan murid
+        for (let card of cardsList) {
+            const qid = parseInt(card.getAttribute("data-qid"));
+            const correctIdx = parseInt(card.getAttribute("data-correctidx"));
+            const selectedRadio = card.querySelector(`input[name="name-q-${qid}"]:checked`);
+            
+            // Cari objek soalan sebenar untuk disimpan jika salah
+            const originalQuestionObj = data.questions.find(q => q.id === qid);
+
+            // Bersihkan gaya lama jika ada pusingan ulangan
+            const labels = card.getElementsByClassName("option-label");
+            for(let lbl of labels) { lbl.className = "option-label"; }
+            document.getElementById(`hint-${qid}`).style.display = "none";
+
+            if (selectedRadio) {
+                const userAns = parseInt(selectedRadio.value);
+                if (userAns === correctIdx) {
+                    correctCount++;
+                    document.getElementById(`label-${qid}-${userAns}`).classList.add("correct-bg");
+                } else {
+                    // Jawapan salah dipilih murid
+                    document.getElementById(`label-${qid}-${userAns}`).classList.add("wrong-bg");
+                    document.getElementById(`label-${qid}-${correctIdx}`).classList.add("correct-bg");
+                    document.getElementById(`hint-${qid}`).style.display = "block";
+                    localWrongPool.push(originalQuestionObj);
+                }
+            } else {
+                // Kes jika murid tertinggal / tidak tanda jawapan langsung
+                document.getElementById(`label-${qid}-${correctIdx}`).classList.add("correct-bg");
+                document.getElementById(`hint-${qid}`).style.display = "block";
+                localWrongPool.push(originalQuestionObj);
+            }
+        }
+
+        // Papar Skor dan Bar Kemajuan Interaktif
+        const scoreDisplay = document.getElementById("score-display");
+        const scoreText = document.getElementById("score-result-text");
+        const scoreBar = document.getElementById("score-bar");
+        
+        scoreDisplay.classList.remove("d-none");
+        let totalCountCurrentRun = currentQuestionsSet.length;
+        let percentage = (correctCount / totalCountCurrentRun) * 100;
+        
+        scoreBar.style.width = `${percentage}%`;
+        scoreText.innerText = `Skor Pusingan Ini: ${correctCount} / ${totalCountCurrentRun}`;
+
+        // ANALISIS LOGIK MASTERI (PENGUASAAN MUTLAK)
+        if (localWrongPool.length === 0) {
+            // Berjaya skor 100% betul belaka!
+            scoreText.innerHTML = `🎉 Tahniah! Anda Berjaya Mencapai Skor Sempurna (${correctCount}/${totalCountCurrentRun}) & Menguasai Adat Ini!`;
+            scoreBar.className = "progress-bar bg-success";
+            
+            document.getElementById("btn-action").classList.add("d-none");
+            document.getElementById("btn-next-topic").classList.remove("d-none");
+            document.getElementById("btn-next-topic").innerText = data.nextBtnText;
+            
+            if(currentTopicIndex === database.length - 1) {
+                document.getElementById("btn-next-topic").className = "btn btn-success btn-lg px-5 w-100 mt-2";
+            }
+        } else {
+            // Terdapat kesilapan jawapan: Paksa ulangi senarai salah sahaja
+            wrongQuestionsPool = localWrongPool;
+            isRemediationLoop = true;
+            
+            scoreBar.className = "progress-bar bg-danger";
+            document.getElementById("btn-action").innerText = `Ulangi ${wrongQuestionsPool.length} Soalan Yang Salah Kesilapan 🔄`;
+            document.getElementById("btn-action").className = "btn btn-warning btn-lg px-5 w-100";
+            
+            // Tukar fungsi butang aksi untuk menjana mod ulangan sekiranya diklik semula
+            document.getElementById("btn-action").onclick = function() {
+                document.getElementById("loop-status").innerText = `Mod Ulangan Tegas (${wrongQuestionsPool.length} Soalan)`;
+                document.getElementById("loop-status").className = "badge bg-danger fs-6";
+                document.getElementById("quiz-intro-msg").classList.add("d-none");
+                document.getElementById("score-display").classList.add("d-none");
+                
+                // Set semula reka bentuk butang asal bersiap sedia untuk semakan pusingan baru
+                document.getElementById("btn-action").innerText = "Semak Jawapan 🔍";
+                document.getElementById("btn-action").className = "btn btn-success btn-lg px-5 w-100";
+                document.getElementById("btn-action").onclick = evaluateQuiz;
+
+                renderQuestions(wrongQuestionsPool);
+                document.getElementById("quiz-panel").scrollTop = 0;
+            };
+        }
+    }
+
+    // FUNGSI UNTUK MENAIKKAN TOPIK KE ADAT RESAM SETERUSNYA
+    function advanceTopic() {
+        if (currentTopicIndex < database.length - 1) {
+            currentTopicIndex++;
+            initTopic();
+        } else {
+            // Selesai keseluruhan 4 modul adat resam
+            document.getElementById("quiz-form").innerHTML = `
+                <div class="card text-center p-5 shadow border-0 bg-white">
+                    <h1 class="display-3 text-success">🏆</h1>
+                    <h2 class="fw-bold text-dark">Tahniah, Anda Bergelar Master Adat Sabah!</h2>
+                    <p class="text-muted mt-2">Anda telah berjaya menamatkan kesemua 4 topik adat resam suku kaum dengan skor 100% tulen tanpa ada baki kesalahan.</p>
+                    <div class="alert alert-success mt-3 mx-auto" style="max-width: 400px;">
+                        🌟 Gred Pencapaian: <b>Cemerlang Tertinggi (A+)</b>
+                    </div>
+                    <button class="btn btn-primary mt-4 px-4 mx-auto" onclick="location.reload()">Ulang Semula Dari Awal 🔄</button>
+                </div>
+            `;
+            document.getElementById("loop-status").innerText = "Tamat Modul";
+            document.getElementById("loop-status").className = "badge bg-success fs-6";
+        }
+    }
+
+    // Muatan permulaan sebaik sahaja tetingkap dilancarkan
+    window.onload = initTopic;
+</script>
+
+</body>
+</html>
